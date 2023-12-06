@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sh-latibov/shorten/internal/config"
 	"github.com/sh-latibov/shorten/internal/lib/logger/sl"
 	"github.com/sh-latibov/shorten/internal/storage/sqlite"
@@ -24,9 +25,11 @@ func main() {
 		log.Error("failed to init storage", sl.Err(err))
 		os.Exit(1)
 	}
-	_ = storage
 
-	fmt.Println(cfg)
+	router := chi.NewRouter()
+
+	router.Use(middleware.RequestID)
+	router.Use(middleware.Logger)
 }
 
 func setupLogger(env string) *slog.Logger {

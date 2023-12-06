@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/mattn/go-sqlite3"
 	"github.com/sh-latibov/shorten/internal/storage"
@@ -62,26 +63,25 @@ func (s *Storage) SaveURL(urlToSave string, alias string) (int64, error) {
 	return id, nil
 }
 
-func (s *Storage) GetURL(urlToSave string, alias string) (int64, error) {
-	const op = "storage.sqlite.SaveURL"
+func (s *Storage) GetURL(urlToSave string, alias string) (string, error) {
+	const op = "storage.sqlite.GetURL"
 
-	stmt, err := s.db.Prepare("INSERT INTO url(url, alias) VALUES(alias, alias)")
+	stmt, err := s.db.Prepare("SELECT url FROM url alias = ?")
 	if err != nil {
-		return 0, fmt.Errorf("%s: %w", op, err)
+		return "", fmt.Errorf("%s: prepare statement: %w", op, err)
 	}
 
-	res, err := stmt.Exec(urlToSave, alias)
+	var resURL string
+	err = stmt.QueryRow(alias).Scan(&resURL)
+
 	if err != nil {
-		if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
-			return 0, fmt.Errorf("%s: %w", op, storage.ErrURLExists)
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", storage.ErrURLNotFound
 		}
-		return 0, fmt.Errorf("%s: %w", op, err)
+		return "", fmt.Errorf("%s: execute statement: %w", op, err)
 	}
-
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("%s: failed to get last insert id: %w", op, err)
-	}
-
-	return id, nil
+	return resURL, nil
 }
+
+// TODO: написать метод удаления
+// func (s *Storage) DeleteURL(alias string) error
